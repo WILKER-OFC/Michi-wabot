@@ -1,5 +1,3 @@
-//--> Hecho por Ado-rgb (github.com/Ado-rgb)
-// •|• No quites créditos..
 import fetch from 'node-fetch'
 import FormData from 'form-data'
 
@@ -15,51 +13,46 @@ async function uploadImage(buffer) {
 
 let handler = async (m, { conn, usedPrefix, command }) => {
   try {
-    await m.react('🕓')
+    await m.react('⏳')
 
-    let q = m.quoted ? m.quoted : m  
-    let mime = (q.msg || q).mimetype || q.mediaType || ''  
+    let q = m.quoted ? m.quoted : m
+    let mime = (q.msg || q).mimetype || q.mediaType || ''
 
-    if (!mime) {  
-      return conn.sendMessage(m.chat, {  
-        text: `❀ Por favor, envía una imagen o responde a una imagen usando *${usedPrefix + command}*`,  
-        ...global.rcanal  
-      }, { quoted: m })  
-    }  
+    if (!mime) {
+      return conn.sendMessage(m.chat, {
+        text: `❇️ Por favor, envía una imagen o responde a una imagen usando *${usedPrefix + command}*`
+      }, { quoted: m })
+    }
 
-    if (!/image\/(jpe?g|png|webp)/.test(mime)) {  
-      return conn.sendMessage(m.chat, {  
-        text: `✧ El formato (${mime}) no es compatible, usa JPG, PNG o WEBP.`,  
-        ...global.rcanal  
-      }, { quoted: m })  
-    }  
+    if (!/image\/(jpe?g|png|webp)/.test(mime)) {
+      return conn.sendMessage(m.chat, {
+        text: `⚠️ El formato (${mime}) no es compatible, usa JPG, PNG o WEBP.`
+      }, { quoted: m })
+    }
 
-    await conn.sendMessage(m.chat, {  
-      text: `✧ Mejorando tu imagen, espera...`,  
-      ...global.rcanal  
-    }, { quoted: m })  
+    await conn.sendMessage(m.chat, {
+      text: `⏳ Mejorando tu imagen, espera...`
+    }, { quoted: m })
 
-    let img = await q.download?.()  
-    if (!img) throw new Error('No pude descargar la imagen.')  
+    let img = await q.download?.()
+    if (!img) throw new Error('No pude descargar la imagen.')
 
-    let uploadedUrl = await uploadImage(img)  
+    let uploadedUrl = await uploadImage(img)
 
-    // Usar la nueva API
-        const api = `https://api-adonix.ultraplus.click/canvas/hd?apikey=DemonKeytechbot&url=${encodeURIComponent(uploadedUrl)}` 
-    const res = await fetch(apiUrl)  
-    if (!res.ok) throw new Error(`Error en la API: ${res.statusText}`)  
-    const data = await res.json()  
+    const api = `https://api-adonix.ultraplus.click/canvas/hd?apikey=DemonKeytechbot&url=${encodeURIComponent(uploadedUrl)}`
+    const res = await fetch(api)
+    if (!res.ok) throw new Error(`Error en la API: ${res.statusText}`)
+    const data = await res.json()
 
-    if (data.status !== 'success' || !data.result_url) throw new Error('No se pudo mejorar la imagen.')  
+    if (!data.status || !data.url) throw new Error('No se pudo mejorar la imagen.')
 
-    const improvedRes = await fetch(data.result_url)  
-    const buffer = await improvedRes.buffer()  
+    const improvedRes = await fetch(data.url)
+    const buffer = await improvedRes.buffer()
 
-    await conn.sendMessage(m.chat, {  
-      image: buffer,  
-      caption: '✅ *Imagen mejorada con éxito*',  
-      ...global.rcanal  
-    }, { quoted: m })  
+    await conn.sendMessage(m.chat, {
+      image: buffer,
+      caption: '✅ *Imagen mejorada con éxito*'
+    }, { quoted: m })
 
     await m.react('✅')
 
