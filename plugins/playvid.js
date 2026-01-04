@@ -1,154 +1,166 @@
-import yts from 'yt-search'
-
-// Configuración
-const API_URL = 'https://api-adonix.ultraplus.click/download/ytaudio'
-const API_KEY = 'WilkerKeydukz9l6871'
-const MAX_SECONDS = 90 * 60
-const HTTP_TIMEOUT_MS = 90 * 1000
-
-globalThis.apikey = API_KEY
-
-// ... (las funciones parseDurationToSeconds, formatErr, fetchJson, fetchBuffer se mantienen igual)
+import yts from "yt-search"
+import fetch from "node-fetch"
 
 const handler = async (m, { conn, text, usedPrefix, command }) => {
-  const chatId = m?.chat || m?.key?.remoteJid
-  if (!chatId) return
+  if (!text) return m.reply("🎄 Ingresa el nombre del video o un enlace de YouTube.")
 
-  if (!text) {
-    return conn.sendMessage(
-      chatId,
-      { 
-        text: `🎵 *Descargador de Audio*\n\n` +
-              `Ejemplo: *${usedPrefix + command} hola remix dalex*`
-      },
-      { quoted: m }
-    )
-  }
-
-  // Reacción de espera
-  await conn.sendMessage(chatId, { react: { text: '⏳', key: m.key } }).catch(() => {})
-
-  let ytUrl = text.trim()
-  let ytInfo = null
+  await m.react("❄️")
 
   try {
-    if (!/youtu\.be|youtube\.com|y2u\.be|yt\.be/i.test(ytUrl)) {
-      const search = await yts(ytUrl)
-      const first = search?.videos?.[0]
-      
-      if (!first) {
-        await conn.sendMessage(chatId, { text: '❌ No se encontró el video.' }, { quoted: m })
-        return
-      }
-      
-      ytInfo = first
-      ytUrl = first.url
-    } else {
-      const search = await yts({ query: ytUrl, pages: 1 })
-      if (search?.videos?.length) {
-        ytInfo = search.videos[0]
-      }
-    }
-  } catch (e) {
-    await conn.sendMessage(
-      chatId,
-      { text: `❌ Error: ${formatErr(e, 800)}` },
-      { quoted: m }
-    )
-    return
-  }
+    let url = text
+    let title = "Desconocido"
+    let authorName = "Desconocido"
+    let durationTimestamp = "Desconocida"
+    let views = "Desconocidas"
+    let thumbnail = ""
 
-  // Verificar duración
-  const durSec = parseDurationToSeconds(ytInfo?.timestamp)
-  if (durSec && durSec > MAX_SECONDS) {
-    await conn.sendMessage(
-      chatId,
-      { text: `❌ Video muy largo (máx ${Math.floor(MAX_SECONDS/60)} min)` },
-      { quoted: m }
-    )
-    return
-  }
-
-  // Información del video
-  const title = ytInfo?.title || 'Audio'
-  const author = ytInfo?.author?.name || ytInfo?.author || 'Desconocido'
-  const thumbnail = ytInfo?.thumbnail
-
-  // Usar la API para descargar audio
-  try {
-    const apiUrl = `${API_URL}?apikey=${encodeURIComponent(API_KEY)}&url=${encodeURIComponent(ytUrl)}`
-    
-    const apiResp = await fetchJson(apiUrl, HTTP_TIMEOUT_MS)
-    
-    if (!apiResp?.status || !apiResp?.data?.url) {
-      throw new Error('API no devolvió enlace de descarga')
+    if (!text.startsWith("https://")) {
+      const res = await yts(text)
+      if (!res?.videos?.length) return m.reply("🚫 No encontré nada.")
+      const video = res.videos[0]
+      title = video.title
+      authorName = video.author?.name
+      durationTimestamp = video.timestamp
+      views = video.views
+      url = video.url
+      thumbnail = video.thumbnail
     }
 
-    const directUrl = String(apiResp.data.url)
-    const apiTitle = apiResp?.data?.title || title
+    const vistas = formatViews(views)
 
-    // Descargar buffer de audio
-    const audioBuffer = await fetchBuffer(directUrl, HTTP_TIMEOUT_MS)
+    const res3 = await fetch("https://files.catbox.moe/wfd0ze.jpg")
+    const thumb3 = Buffer.from(await res3.arrayBuffer())
 
-    // ENVIAR TODO EN UN SOLO MENSAJE
-    await conn.sendMessage(
-      chatId,
-      {
-        // El audio principal
-        audio: audioBuffer,
-        mimetype: 'audio/mpeg',
-        fileName: `${apiTitle.substring(0, 70)}.mp3`.replace(/[^\w\s-]/gi, ''),
-        
-        // Metadata que se mostrará en WhatsApp
-        contextInfo: {
-          externalAdReply: {
-            // Título principal que aparece arriba
-            title: `🎧 ${apiTitle.substring(0, 50)}`,
-            
-            // Descripción que aparece abajo
-            body: `👤 ${author}`,
-            
-            // Thumbnail/portada del audio
-            thumbnailUrl: thumbnail,
-            
-            // Tipo de media (2 = audio con imagen)
-            mediaType: 2,
-            
-            // URL que se abre al tocar (opcional)
-            mediaUrl: ytUrl,
-            
-            // URL de origen (opcional)
-            sourceUrl: ytUrl,
-            
-            // Mostrar como vista previa de URL
-            showAdAttribution: true,
-            
-            // Texto de atribución (opcional)
-            renderLargerThumbnail: true
-          }
+    // Imagen pequeña arriba (quoted)
+    const fkontak = {
+      key: { fromMe: false, participant: "0@s.whatsapp.net" },
+      message: {
+        documentMessage: {
+          title: `『 ${title} 』`,
+          fileName: global.botname || "Shadow Bot",
+          jpegThumbnail: thumb3
         }
-      },
-      { quoted: m }
-    )
+      }
+    }
 
-    // Reacción de éxito
-    await conn.sendMessage(chatId, { react: { text: '✅', key: m.key } }).catch(() => {})
+    // Nuevo estilo del caption con otra tipografía y adornos
+    const caption = `
+✧━───『 𝙸𝚗𝚏𝚘 𝚍𝚎𝚕 𝚅𝚒𝚍𝚎𝚘 』───━✧
 
-  } catch (e) {
+🎼 𝑻𝒊́𝒕𝒖𝒍𝒐: ${title}
+📺 𝑪𝒂𝒏𝒂𝒍: ${authorName}
+👁️ 𝑽𝒊𝒔𝒕𝒂𝒔: ${vistas}
+⏳ 𝑫𝒖𝒓𝒂𝒄𝒊𝒐́𝒏: ${durationTimestamp}
+🌐 𝑬𝒏𝒍𝒂𝒄𝒆: ${url}
+
+✧━───『 *Michi wabot* 』───━✧
+⚡ Michi wabot update⚡
+`
+
+    const thumb = (await conn.getFile(thumbnail)).data
     await conn.sendMessage(
-      chatId,
-      { 
-        text: `❌ Error al descargar:\n${formatErr(e, 1000)}`
+      m.chat,
+      {
+        image: thumb,
+        caption,
+        footer: "⚡ Shadow — Descargas rápidas ⚡",
+        buttons: [
+          { buttonId: `shadowaudio ${url}`, buttonText: { displayText: "🎵 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙧 𝘼𝙪𝙙𝙞𝙤" }, type: 1 },
+          { buttonId: `shadowvideo ${url}`, buttonText: { displayText: "🎬 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙧 𝙑𝙞𝙙𝙚𝙤" }, type: 1 }
+        ],
+        headerType: 4
       },
-      { quoted: m }
+      { quoted: fkontak }
     )
+
+    await m.react("✅")
+  } catch (e) {
+    m.reply("❌ Error: " + e.message)
+    m.react("⚠️")
   }
 }
 
-// Configuración del comando
-handler.help = ['play <texto|enlace>']
-handler.tags = ['multimedia', 'descargas']
-handler.command = ['play', 'ytplay', 'ytmp3', 'audio', 'song']
-handler.limit = true
+handler.before = async (m, { conn }) => {
+  const selected = m?.message?.buttonsResponseMessage?.selectedButtonId
+  if (!selected) return
+
+  const parts = selected.split(" ")
+  const cmd = parts.shift()
+  const url = parts.join(" ")
+
+  if (cmd === "shadowaudio") {
+    return downloadMedia(conn, m, url, "mp3")
+  }
+
+  if (cmd === "shadowvideo") {
+    return downloadMedia(conn, m, url, "mp4")
+  }
+}
+
+const fetchBuffer = async (url) => {
+  const response = await fetch(url)
+  return await response.buffer()
+}
+
+const downloadMedia = async (conn, m, url, type) => {
+  try {
+    const msg = type === "mp3"
+      ? "🎵 Descargando audio..."
+      : "🎬 Descargando video..."
+
+    const sent = await conn.sendMessage(m.chat, { text: msg }, { quoted: m })
+
+    const apiUrl = type === "mp3"
+      ? `https://api-adonix.ultraplus.click/download/ytaudio?url=${encodeURIComponent(url)}&apikey=ShadowkeyBotMD`
+      : `https://api-adonix.ultraplus.click/download/ytvideo?url=${encodeURIComponent(url)}&apikey=ShadowkeyBotMD`
+
+    const r = await fetch(apiUrl)
+    const data = await r.json()
+
+    if (!data?.status || !data?.data?.url) return m.reply("🚫 No se pudo descargar el archivo.")
+
+    const fileUrl = data.data.url
+    const fileTitle = cleanName(data.data.title || "video")
+
+    if (type === "mp3") {
+      const audioBuffer = await fetchBuffer(fileUrl)
+      await conn.sendMessage(
+        m.chat,
+        { audio: audioBuffer, mimetype: "audio/mpeg", fileName: fileTitle + ".mp3" },
+        { quoted: m }
+      )
+    } else {
+      await conn.sendMessage(
+        m.chat,
+        { video: { url: fileUrl }, mimetype: "video/mp4", fileName: fileTitle + ".mp4" },
+        { quoted: m }
+      )
+    }
+
+    await conn.sendMessage(
+      m.chat,
+      { text: `✅ Descarga completada\n\n🎼 Título: ${fileTitle}`, edit: sent.key }
+    )
+
+    await m.react("🌟")
+  } catch (e) {
+    console.error(e)
+    m.reply("❌ Error: " + e.message)
+    m.react("💀")
+  }
+}
+
+const cleanName = (name) => name.replace(/[^\w\s-_.]/gi, "").substring(0, 50)
+const formatViews = (views) => {
+  if (views === undefined || views === null) return "No disponible"
+  if (views >= 1000000000) return `${(views / 1000000000).toFixed(1)}B`
+  if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`
+  if (views >= 1000) return `${(views / 1000).toFixed(1)}K`
+  return views.toString()
+}
+
+handler.command = ["play", "yt", "ytsearch"]
+handler.tags = ["descargas"]
+handler.register = true
 
 export default handler
